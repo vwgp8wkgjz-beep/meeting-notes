@@ -105,32 +105,46 @@
   }
   .x:hover { background: #F3E3E1; color: var(--danger); }
 
-  .tags { grid-column: 4; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; padding-left: 12px; padding-top: 1px; }
+  /* Tags on a line: colored badges. Full names when there's room, one letter when narrow. */
+  .tags { grid-column: 4; display: flex; gap: 6px; padding-left: 12px; padding-top: 1px; }
   .tag {
-    border: 1px solid transparent; border-radius: 999px; padding: 1px 10px; font-size: 13px; font-weight: 600;
-    cursor: pointer; background: transparent; white-space: nowrap;
+    border-radius: 999px; padding: 1px 10px; font-size: 13px; font-weight: 600; line-height: 1.6;
+    white-space: nowrap; cursor: pointer;
   }
-  .tag.off { border-color: var(--rule); color: #A3A8B0; font-weight: 500; }
-  .tag.off:hover { border-color: #B9BDB4; color: var(--muted); }
-  .tag[data-tag="Small prompt"].on { background: #E4ECF8; color: #2B4F8C; }
-  .tag[data-tag="Big"].on { background: #FBE6D6; color: #8E3F0A; }
-  .tag[data-tag="David"].on { background: #DFF0E6; color: #1C6340; }
-  .tag[data-tag="Michael"].on { background: #EDE4F4; color: #643B85; }
-  /* Unused tags stay hidden until you click a note's + button. */
-  .tag.off { display: none; }
-  .note.picking .tag.off { display: inline-block; }
+  .tag .short { display: none; }
+  [data-tag="Small prompt"] { --tag-bg: #E4ECF8; --tag-ink: #2B4F8C; }
+  [data-tag="Big"] { --tag-bg: #FBE6D6; --tag-ink: #8E3F0A; }
+  [data-tag="David"] { --tag-bg: #DFF0E6; --tag-ink: #1C6340; }
+  [data-tag="Michael"] { --tag-bg: #EDE4F4; --tag-ink: #643B85; }
+  .tag { background: var(--tag-bg); color: var(--tag-ink); }
+
   .plus {
     grid-column: 5; width: 24px; height: 24px; border: 0; border-radius: 50%;
     background: transparent; color: #A3A8B0; cursor: pointer; font-size: 18px; line-height: 1;
   }
-  .plus:hover { background: var(--pin-soft); color: var(--pin); }
-  .note.picking .plus { visibility: hidden; }
+  .plus:hover, .note.picking .plus { background: var(--pin-soft); color: var(--pin); }
   @media (hover: hover) {
     .plus { opacity: 0; }
-    .note:hover .plus, .plus:focus-visible { opacity: 1; }
+    .note:hover .plus, .note.picking .plus, .plus:focus-visible { opacity: 1; }
   }
+
+  /* The tag dropdown, opened by + */
+  .note { position: relative; }
+  .picker {
+    display: none; position: absolute; right: 24px; top: calc(100% - 4px); z-index: 5;
+    min-width: 176px; padding: 6px; background: var(--sheet);
+    border: 1px solid var(--rule); border-radius: 10px; box-shadow: 0 6px 20px rgba(27, 33, 48, 0.12);
+  }
+  .note.picking .picker { display: block; }
+  .pick {
+    display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 8px;
+    border: 0; border-radius: 6px; background: transparent; cursor: pointer; text-align: left; font-size: 15px;
+  }
+  .pick:hover { background: var(--paper); }
+  .pick .check { width: 14px; color: var(--pin); font-weight: 700; }
+  .pick .swatch { width: 10px; height: 10px; border-radius: 50%; background: var(--tag-ink); }
+
   .readonly .tag { cursor: default; }
-  .readonly .tag.off { display: none !important; }
   .readonly .note { cursor: default; }
   .readonly .x, .readonly .plus, .readonly .add { display: none; }
 
@@ -163,14 +177,16 @@
   @media (max-width: 640px) {
     .page { padding-top: 24px; }
     .tabs { margin-top: 24px; }
-    /* Tags drop under the words on a phone. */
-    .tags { grid-column: 3; grid-row: 2; justify-content: flex-start; padding: 6px 0 0; }
-    .note:not(.picking) .tags:not(:has(.on)) { display: none; }
+    /* Narrow window: tags shrink to one letter so they stay beside the words. */
+    .tags { gap: 4px; padding-left: 8px; }
+    .tag { width: 22px; height: 22px; padding: 0; display: grid; place-items: center; font-size: 12px; }
+    .tag .full { display: none; }
+    .tag .short { display: inline; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
   @media print {
     body { background: #fff; }
-    .actions, .tabs, .add, .x, .tag.off, .toast { display: none !important; }
+    .actions, .tabs, .add, .x, .plus, .picker, .toast { display: none !important; }
   }
 </style>
 </head>
@@ -215,7 +231,6 @@ const LANES = [
 
 // data = {
 //   staff: "a@kadimare.com, b@kadimare.com",   (last "Send to" list, remembered)
-//   nextNum: 4,
 //   meetings: [ { date: "2026-10-28", notes: [ { n: 1, text: "", lane: "week", tags: ["Big"] } ] } ]  newest first
 // }
 let data = load();
@@ -225,7 +240,7 @@ function load() {
     const d = JSON.parse(localStorage.getItem(STORE_KEY));
     if (d && Array.isArray(d.meetings)) return d;
   } catch (e) {}
-  return { staff: '', nextNum: 1, meetings: [] };
+  return { staff: '', meetings: [] };
 }
 function save() { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
 
@@ -269,8 +284,8 @@ function render() {
       <div class="lane-head"><h2>${lane.title}</h2><span>${notes.length || ''}</span></div>
       <div class="drop" data-lane="${lane.id}"></div>`;
     const drop = el.querySelector('.drop');
-    for (const n of notes) drop.appendChild(noteEl(n, past));
     if (lane.id === 'week' && !past) drop.appendChild(addBox());
+    for (const n of notes) drop.appendChild(noteEl(n, past));
     if (!notes.length && (past || lane.id !== 'week')) {
       drop.insertAdjacentHTML('beforeend', `<p class="empty">${past ? 'Nothing here.' : 'Drag notes here.'}</p>`);
     }
@@ -316,7 +331,8 @@ function addBox() {
     e.preventDefault();
     const text = ta.value.trim();
     if (!text) return;
-    meeting().notes.push({ n: data.nextNum++, text, lane: 'week', tags: [] });
+    const next = Math.max(0, ...meeting().notes.map(x => x.n)) + 1;
+    meeting().notes.push({ n: next, text, lane: 'week', tags: [] });
     save();
     render();
     $('board').querySelector('.add textarea').focus();
@@ -332,13 +348,25 @@ function noteEl(n, past) {
     <div class="note-row">
       <span class="num">${n.n}</span>
       <div class="text"></div>
-      <div class="tags">${TAGS.map(t => {
-      const on = n.tags.includes(t);
-      return `<button type="button" class="tag ${on ? 'on' : 'off'}" data-tag="${esc(t)}" aria-pressed="${on}">${esc(t)}</button>`;
-    }).join('')}</div>
-      <button class="plus" type="button" aria-label="Add a tag to note ${n.n}" title="Add a tag">+</button>
+      <div class="tags"></div>
+      <button class="plus" type="button" aria-label="Tags for note ${n.n}" aria-haspopup="true" title="Tags">+</button>
       <button class="x" type="button" aria-label="Delete note ${n.n}" title="Delete">&times;</button>
-    </div>`;
+    </div>
+    <div class="picker" role="menu" aria-label="Tags for note ${n.n}">${TAGS.map(t =>
+      `<button type="button" class="pick" role="menuitemcheckbox" data-tag="${esc(t)}"><span class="check"></span><span class="swatch"></span>${esc(t)}</button>`
+    ).join('')}</div>`;
+  const tagsEl = el.querySelector('.tags');
+  const showTags = () => {
+    tagsEl.innerHTML = n.tags.map(t =>
+      `<span class="tag" data-tag="${esc(t)}" title="${esc(t)}"><span class="full">${esc(t)}</span><span class="short">${esc(t[0])}</span></span>`
+    ).join('');
+    el.querySelectorAll('.pick').forEach(b => {
+      const on = n.tags.includes(b.dataset.tag);
+      b.setAttribute('aria-checked', String(on));
+      b.querySelector('.check').textContent = on ? '\u2713' : '';
+    });
+  };
+  showTags();
   const text = el.querySelector('.text');
   text.textContent = n.text;
   if (past) return el;
@@ -377,18 +405,21 @@ function noteEl(n, past) {
     save();
     render();
   });
-  el.querySelector('.plus').addEventListener('click', () => {
+  const openPicker = () => {
+    if (picking === el) { closePicker(); return; }
     closePicker();
     el.classList.add('picking');
+    el.draggable = false;
     picking = el;
-    el.querySelector('.tag.off')?.focus();
-  });
-  el.querySelectorAll('.tag').forEach(b => b.addEventListener('click', () => {
+    el.querySelector('.pick').focus();
+  };
+  el.querySelector('.plus').addEventListener('click', openPicker);
+  tagsEl.addEventListener('click', openPicker);
+  el.querySelectorAll('.pick').forEach(b => b.addEventListener('click', () => {
     const t = b.dataset.tag;
     n.tags = n.tags.includes(t) ? n.tags.filter(x => x !== t) : TAGS.filter(x => x === t || n.tags.includes(x));
     save();
-    b.classList.toggle('on'); b.classList.toggle('off');
-    b.setAttribute('aria-pressed', String(n.tags.includes(t)));
+    showTags();
   }));
 
   el.addEventListener('dragstart', e => {
@@ -403,8 +434,15 @@ function noteEl(n, past) {
 
 // ---------- Tag picker: open on one note at a time ----------
 let picking = null;
-function closePicker() { if (picking) picking.classList.remove('picking'); picking = null; }
-document.addEventListener('pointerdown', e => { if (picking && !picking.contains(e.target)) closePicker(); });
+function closePicker() {
+  if (!picking) return;
+  picking.classList.remove('picking');
+  picking.draggable = true;
+  picking = null;
+}
+document.addEventListener('pointerdown', e => {
+  if (picking && !e.target.closest('.picker, .plus, .tags')) closePicker();
+});
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closePicker(); });
 
 // ---------- Drag between lanes ----------
