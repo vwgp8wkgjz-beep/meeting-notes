@@ -14,10 +14,10 @@ The repo is public (decided 2026-10-28: free GitHub Pages needs a public repo). 
 
 ## What it does
 
-- Three sections stacked top to bottom: **This week**, **Being dealt with**, **Out of scope**. Each is a bullet list, one line per note: number, words, tags. (Changed 2026-10-28 from side-by-side columns of cards, at David's request.)
+- Three sections stacked top to bottom: **This week**, **Being dealt with**, **Out of scope**. Each is a bullet list, one line per note: number, words, tags. Notes always list in number order, lowest first; new notes go at the bottom of This week. (Changed 2026-10-28 from side-by-side columns of cards, at David's request.)
 - Type a note in the box at the top of "This week" and press Enter. Each note gets a number that never changes, so "number 4" means the same thing every week.
-- Drag a note to move it to another section or reorder it. Click a note's words to edit them.
-- Four tags you can switch on or off for each note: Small prompt, Big, David, Michael. On a computer, unused tags appear when you point at a note.
+- Drag a note to move it to another section. (Reordering inside a section was dropped on 2026-10-28 so numbers always read in order.) Click a note's words to edit them.
+- Four tags you can switch on or off for each note: Small prompt, Big, David, Michael. Click the + at the end of a line to show the unused tags; they close when you click anywhere else. Click a tag that's on to remove it.
 - **Meeting tabs.** Each meeting gets a tab with its date. "+ New meeting" (shown when the latest meeting isn't today) starts today's meeting with every note carried over. Older tabs are read-only, so they stay an honest record of each meeting.
 - **Email this meeting** opens your mail app with a new email: subject "Meeting notes, <date>", the notes grouped by section with numbers and tags. The "Send to" list is remembered. "Copy text" is there for when the mail app doesn't open or the email is very long.
 
