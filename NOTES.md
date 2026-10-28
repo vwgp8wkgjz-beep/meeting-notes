@@ -14,12 +14,12 @@ The repo is public (decided 2026-10-28: free GitHub Pages needs a public repo). 
 
 ## What it does
 
-- Three columns: **This week**, **Being dealt with**, **Out of scope**.
+- Three sections stacked top to bottom: **This week**, **Being dealt with**, **Out of scope**. Each is a bullet list, one line per note: number, words, tags. (Changed 2026-10-28 from side-by-side columns of cards, at David's request.)
 - Type a note in the box at the top of "This week" and press Enter. Each note gets a number that never changes, so "number 4" means the same thing every week.
-- Drag a note to move it between columns or reorder it. Click a note's words to edit them.
+- Drag a note to move it to another section or reorder it. Click a note's words to edit them.
 - Four tags you can switch on or off for each note: Small prompt, Big, David, Michael. On a computer, unused tags appear when you point at a note.
 - **Meeting tabs.** Each meeting gets a tab with its date. "+ New meeting" (shown when the latest meeting isn't today) starts today's meeting with every note carried over. Older tabs are read-only, so they stay an honest record of each meeting.
-- **Email this meeting** opens your mail app with a new email: subject "Meeting notes, <date>", the notes grouped by column with numbers and tags. The "Send to" list is remembered. "Copy text" is there for when the mail app doesn't open or the email is very long.
+- **Email this meeting** opens your mail app with a new email: subject "Meeting notes, <date>", the notes grouped by section with numbers and tags. The "Send to" list is remembered. "Copy text" is there for when the mail app doesn't open or the email is very long.
 
 ## Updating
 
@@ -31,11 +31,11 @@ Push to the `main` branch of `vwgp8wkgjz-beep/meeting-notes` on GitHub. Pages re
 - `manifest.webmanifest`, `icons/` and `sw.js` make it installable and let it open offline. `sw.js` is a copy of Hours' file with its own cache name.
 - Notes are saved in the browser on that computer only (same as Hours). Clearing that site's browser data deletes them.
 - Deleting a note removes it from today's meeting only. It stays in the past tabs.
-- Icons are drawn by a one-off Python script (three columns of cards on teal); the PNGs are the source.
+- Icons are drawn by a one-off Python script (three columns of cards on teal, from the first side-by-side design); the PNGs are the source.
 
 ## Built
 
-2026-10-28. Tested in headless Chrome: adding notes, tags, dragging between columns (including grabbing a note by its words), editing, reload keeps everything, email text and remembered "Send to" list, new meeting carries notes over with numbers kept, past meeting read-only, phone layout.
+2026-10-28. Tested in headless Chrome: adding notes, tags, dragging between sections (including grabbing a note by its words), editing, reload keeps everything, email text and remembered "Send to" list, new meeting carries notes over with numbers kept, past meeting read-only, phone layout.
 
 Not tested: dragging on a real phone or iPad. Touch drag in browsers is less dependable than mouse drag.
 
