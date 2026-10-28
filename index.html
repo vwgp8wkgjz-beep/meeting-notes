@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notes</title>
+<meta name="theme-color" content="#F4F5F2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F4F5F2;
+    --sheet: #FFFFFF;
+    --ink: #1B2130;
+    --muted: #6A707C;
+    --rule: #DCDFD8;
+    --pin: #0E6E73;
+    --pin-soft: #DFF0EF;
+    --danger: #B42318;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 16px/1.5 "Hanken Grotesk", system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  button, input, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--pin); outline-offset: 2px; }
+
+  .page { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* Header */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .top h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .actions { display: flex; gap: 8px; }
+  .btn {
+    border: 1px solid var(--rule); background: var(--sheet); border-radius: 8px;
+    padding: 9px 16px; font-size: 15px; font-weight: 600; cursor: pointer;
+  }
+  .btn:hover { border-color: #B9BDB4; }
+  .btn.primary { background: var(--pin); border-color: var(--pin); color: #fff; }
+  .btn.primary:hover { background: #0A585C; }
+
+  /* Meeting tabs */
+  .tabs { display: flex; gap: 4px; margin-top: 36px; border-bottom: 1px solid var(--rule); overflow-x: auto; scrollbar-width: none; }
+  .tab {
+    flex: none; border: 0; background: none; cursor: pointer;
+    padding: 10px 14px 12px; font-size: 15px; font-weight: 500; color: var(--muted);
+    border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--pin); }
+  .tab.new { color: var(--pin); font-weight: 600; }
+  .past-note { margin: 16px 0 0; color: var(--muted); font-size: 15px; }
+
+  /* The board */
+  .board { margin-top: 28px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: start; }
+  .lane { min-width: 0; }
+  .lane-head { display: flex; align-items: baseline; justify-content: space-between; padding: 0 2px 10px; }
+  .lane-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .lane-head span { color: var(--muted); font-size: 15px; }
+  .drop {
+    min-height: 120px; padding: 8px; border-radius: 12px;
+    background: #EAECE6; display: flex; flex-direction: column; gap: 8px;
+    transition: background 0.15s;
+  }
+  .lane.out .drop { background: transparent; border: 1px dashed #C9CDC4; }
+  .drop.over { background: var(--pin-soft); }
+  .lane.out .drop.over { background: var(--pin-soft); border-color: var(--pin); }
+  .empty { margin: auto; padding: 20px 8px; text-align: center; color: #9AA0A8; font-size: 14px; }
+
+  .add {
+    display: flex; gap: 8px; align-items: flex-start;
+    background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 10px 12px;
+  }
+  .add textarea {
+    flex: 1; border: 0; background: transparent; resize: none; overflow: hidden; padding: 0;
+    font-size: 15px; line-height: 1.4; min-height: 21px;
+  }
+  .add textarea:focus { outline: none; }
+  .add textarea::placeholder { color: #A3A8B0; }
+  .add:focus-within { border-color: var(--pin); }
+
+  /* A note */
+  .note {
+    position: relative; background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 10px 12px 10px 12px; cursor: grab;
+  }
+  .note:active { cursor: grabbing; }
+  .note.dragging { opacity: 0.35; }
+  .lane.out .note { background: #FAFBF9; color: #4A505C; }
+  .note-row { display: flex; gap: 10px; align-items: flex-start; }
+  .num { flex: none; min-width: 26px; font-weight: 700; color: var(--pin); font-size: 15px; line-height: 1.4; }
+  .lane.out .num { color: var(--muted); }
+  .note textarea {
+    flex: 1; min-width: 0; border: 0; background: transparent; resize: none; overflow: hidden; padding: 0;
+    font-size: 15px; line-height: 1.4; cursor: text;
+  }
+  .note textarea:focus { outline: none; }
+  .note:focus-within { border-color: var(--pin); }
+  .text { flex: 1; min-width: 0; font-size: 15px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .x {
+    flex: none; width: 24px; height: 24px; margin: -2px -4px 0 0; border: 0; border-radius: 50%;
+    background: transparent; color: #A3A8B0; cursor: pointer; font-size: 18px; line-height: 1;
+  }
+  .x:hover { background: #F3E3E1; color: var(--danger); }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0 36px; }
+  .tag {
+    border: 1px solid transparent; border-radius: 999px; padding: 1px 10px; font-size: 13px; font-weight: 600;
+    cursor: pointer; background: transparent;
+  }
+  .tag.off { border-color: var(--rule); color: #A3A8B0; font-weight: 500; }
+  .tag.off:hover { border-color: #B9BDB4; color: var(--muted); }
+  .tag[data-tag="Small prompt"].on { background: #E4ECF8; color: #2B4F8C; }
+  .tag[data-tag="Big"].on { background: #FBE6D6; color: #8E3F0A; }
+  .tag[data-tag="David"].on { background: #DFF0E6; color: #1C6340; }
+  .tag[data-tag="Michael"].on { background: #EDE4F4; color: #643B85; }
+  /* Unused tags stay hidden until you point at a note, so the board stays quiet. */
+  @media (hover: hover) {
+    .note .tag.off { display: none; }
+    .note:hover .tag.off, .note:focus-within .tag.off { display: inline-block; }
+    .note .tags:not(:has(.on)) { margin-top: 0; }
+    .note:hover .tags, .note:focus-within .tags { margin-top: 8px; }
+  }
+  .readonly .tag { cursor: default; }
+  .readonly .tag.off { display: none !important; }
+  .readonly .note { cursor: default; }
+  .readonly .x, .readonly .add { display: none; }
+
+  /* Email dialog */
+  dialog {
+    width: min(560px, calc(100vw - 32px)); border: 1px solid var(--rule); border-radius: 14px;
+    padding: 24px; background: var(--sheet); color: var(--ink);
+  }
+  dialog::backdrop { background: rgba(27, 33, 48, 0.35); }
+  dialog h2 { margin: 0 0 4px; font-size: 20px; font-weight: 700; }
+  dialog p { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
+  dialog label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  dialog input {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--rule); border-radius: 8px; font-size: 15px;
+  }
+  dialog input:focus { outline: none; border-color: var(--pin); }
+  .preview {
+    margin: 16px 0 0; padding: 12px 14px; max-height: 260px; overflow: auto; white-space: pre-wrap;
+    background: var(--paper); border-radius: 8px; font-size: 14px; line-height: 1.45;
+  }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; flex-wrap: wrap; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px);
+    background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 8px;
+    font-size: 15px; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 860px) {
+    .page { padding-top: 24px; }
+    .tabs { margin-top: 24px; }
+    .board { grid-template-columns: 1fr; gap: 28px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media print {
+    body { background: #fff; }
+    .actions, .tabs, .add, .x, .tag.off, .toast { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="top">
+    <h1>Notes</h1>
+    <div class="actions">
+      <button class="btn primary" id="email" type="button">Email this meeting</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Meetings"></nav>
+  <p class="past-note" id="past-note" hidden></p>
+
+  <section class="board" id="board" aria-label="Notes board"></section>
+</main>
+
+<dialog id="mail">
+  <h2>Email this meeting</h2>
+  <p>Opens a new email in your mail app with these notes filled in.</p>
+  <label for="to">Send to</label>
+  <input id="to" type="text" placeholder="name@kadimare.com, name@kadimare.com" autocomplete="off">
+  <div class="preview" id="preview"></div>
+  <div class="dialog-actions">
+    <button class="btn" id="mail-cancel" type="button">Cancel</button>
+    <button class="btn" id="mail-copy" type="button">Copy text</button>
+    <button class="btn primary" id="mail-open" type="button">Open email</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const STORE_KEY = 'meeting-notes-v1';
+const TAGS = ['Small prompt', 'Big', 'David', 'Michael'];
+const LANES = [
+  { id: 'week', title: 'This week' },
+  { id: 'doing', title: 'Being dealt with' },
+  { id: 'out', title: 'Out of scope' },
+];
+
+// data = {
+//   staff: "a@kadimare.com, b@kadimare.com",   (last "Send to" list, remembered)
+//   nextNum: 4,
+//   meetings: [ { date: "2026-10-28", notes: [ { n: 1, text: "", lane: "week", tags: ["Big"] } ] } ]  newest first
+// }
+let data = load();
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (d && Array.isArray(d.meetings)) return d;
+  } catch (e) {}
+  return { staff: '', nextNum: 1, meetings: [] };
+}
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+// ---------- Dates ----------
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad = n => String(n).padStart(2, '0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+function dateLabel(k, withYear) {
+  const [y, m, d] = k.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${d}` + (withYear ? `, ${y}` : '');
+}
+const todayKey = () => keyOf(new Date());
+
+// First visit: start today's meeting.
+if (!data.meetings.length) { data.meetings.push({ date: todayKey(), notes: [] }); save(); }
+
+let shown = 0; // index into data.meetings; 0 is the newest
+const meeting = () => data.meetings[shown];
+const isPast = () => shown !== 0;
+
+// ---------- Rendering ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const fit = ta => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; };
+
+function render() {
+  renderTabs();
+  const m = meeting();
+  const past = isPast();
+  $('past-note').hidden = !past;
+  if (past) $('past-note').textContent = `Notes from the ${dateLabel(m.date, true)} meeting, read-only.`;
+
+  const board = $('board');
+  board.className = 'board' + (past ? ' readonly' : '');
+  board.innerHTML = '';
+  for (const lane of LANES) {
+    const notes = m.notes.filter(n => n.lane === lane.id);
+    const el = document.createElement('div');
+    el.className = 'lane ' + lane.id;
+    el.innerHTML = `
+      <div class="lane-head"><h2>${lane.title}</h2><span>${notes.length || ''}</span></div>
+      <div class="drop" data-lane="${lane.id}"></div>`;
+    const drop = el.querySelector('.drop');
+    if (lane.id === 'week' && !past) drop.appendChild(addBox());
+    for (const n of notes) drop.appendChild(noteEl(n, past));
+    if (!notes.length && (past || lane.id !== 'week')) {
+      drop.insertAdjacentHTML('beforeend', `<p class="empty">${past ? 'Nothing here.' : 'Drag notes here.'}</p>`);
+    }
+    if (!past) wireDrop(drop);
+    board.appendChild(el);
+  }
+  board.querySelectorAll('textarea').forEach(fit);
+}
+
+function renderTabs() {
+  const tabs = $('tabs');
+  tabs.innerHTML = '';
+  if (data.meetings[0].date !== todayKey()) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tab new';
+    b.textContent = '+ New meeting';
+    b.title = 'Starts today\'s meeting with every open note carried over';
+    b.addEventListener('click', newMeeting);
+    tabs.appendChild(b);
+  }
+  data.meetings.forEach((m, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'tab';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(i === shown));
+    const thisYear = m.date.slice(0, 4) === todayKey().slice(0, 4);
+    b.textContent = (m.date === todayKey() ? 'Today, ' : '') + dateLabel(m.date, !thisYear);
+    b.addEventListener('click', () => { shown = i; render(); });
+    tabs.appendChild(b);
+  });
+}
+
+function addBox() {
+  const box = document.createElement('div');
+  box.className = 'add';
+  box.innerHTML = `<textarea rows="1" placeholder="Add a note, press Enter" aria-label="New note for this week"></textarea>`;
+  const ta = box.querySelector('textarea');
+  ta.addEventListener('input', () => fit(ta));
+  ta.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || e.shiftKey) return;
+    e.preventDefault();
+    const text = ta.value.trim();
+    if (!text) return;
+    meeting().notes.unshift({ n: data.nextNum++, text, lane: 'week', tags: [] });
+    save();
+    render();
+    $('board').querySelector('.add textarea').focus();
+  });
+  return box;
+}
+
+function noteEl(n, past) {
+  const el = document.createElement('div');
+  el.className = 'note';
+  el.dataset.n = n.n;
+  el.innerHTML = `
+    <div class="note-row">
+      <span class="num">${n.n}</span>
+      <div class="text"></div>
+      <button class="x" type="button" aria-label="Delete note ${n.n}" title="Delete">&times;</button>
+    </div>
+    <div class="tags">${TAGS.map(t => {
+      const on = n.tags.includes(t);
+      return `<button type="button" class="tag ${on ? 'on' : 'off'}" data-tag="${esc(t)}" aria-pressed="${on}">${esc(t)}</button>`;
+    }).join('')}</div>`;
+  const text = el.querySelector('.text');
+  text.textContent = n.text;
+  if (past) return el;
+
+  // The whole card drags. A click on the words (without dragging) edits them.
+  el.draggable = true;
+  text.tabIndex = 0;
+  text.setAttribute('role', 'button');
+  text.setAttribute('aria-label', `Edit note ${n.n}`);
+  const edit = () => {
+    el.draggable = false;
+    const ta = document.createElement('textarea');
+    ta.rows = 1;
+    ta.value = n.text;
+    ta.setAttribute('aria-label', `Note ${n.n}`);
+    text.replaceWith(ta);
+    fit(ta);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+    ta.addEventListener('input', () => { fit(ta); n.text = ta.value; save(); });
+    ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ta.blur(); } });
+    ta.addEventListener('blur', () => {
+      n.text = ta.value.trim();
+      save();
+      text.textContent = n.text;
+      ta.replaceWith(text);
+      el.draggable = true;
+    });
+  };
+  text.addEventListener('click', edit);
+  text.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); edit(); } });
+
+  el.querySelector('.x').addEventListener('click', () => {
+    if (n.text.trim() && !confirm(`Delete note ${n.n}?`)) return;
+    meeting().notes = meeting().notes.filter(x => x !== n);
+    save();
+    render();
+  });
+  el.querySelectorAll('.tag').forEach(b => b.addEventListener('click', () => {
+    const t = b.dataset.tag;
+    n.tags = n.tags.includes(t) ? n.tags.filter(x => x !== t) : TAGS.filter(x => x === t || n.tags.includes(x));
+    save();
+    b.classList.toggle('on'); b.classList.toggle('off');
+    b.setAttribute('aria-pressed', String(n.tags.includes(t)));
+  }));
+
+  el.addEventListener('dragstart', e => {
+    dragging = n;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', `${n.n}. ${n.text}`);
+    requestAnimationFrame(() => el.classList.add('dragging'));
+  });
+  el.addEventListener('dragend', () => { el.classList.remove('dragging'); dragging = null; });
+  return el;
+}
+
+// ---------- Drag between lanes (and reorder within one) ----------
+let dragging = null;
+
+function wireDrop(drop) {
+  drop.addEventListener('dragover', e => {
+    if (!dragging) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    drop.classList.add('over');
+  });
+  drop.addEventListener('dragleave', e => { if (!drop.contains(e.relatedTarget)) drop.classList.remove('over'); });
+  drop.addEventListener('drop', e => {
+    e.preventDefault();
+    drop.classList.remove('over');
+    if (!dragging) return;
+    const lane = drop.dataset.lane;
+    // Find the note the pointer is above; drop goes before it.
+    const others = [...drop.querySelectorAll('.note')].filter(x => Number(x.dataset.n) !== dragging.n);
+    const before = others.find(x => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+    const notes = meeting().notes.filter(x => x !== dragging);
+    dragging.lane = lane;
+    let at;
+    if (before) at = notes.findIndex(x => x.n === Number(before.dataset.n));
+    else {
+      // After the last note in this lane.
+      const lastInLane = notes.map(x => x.lane).lastIndexOf(lane);
+      at = lastInLane === -1 ? notes.length : lastInLane + 1;
+    }
+    notes.splice(at, 0, dragging);
+    meeting().notes = notes;
+    dragging = null;
+    save();
+    render();
+  });
+}
+
+// ---------- New meeting: carry every note forward, keep its number ----------
+function newMeeting() {
+  const latest = data.meetings[0];
+  data.meetings.unshift({ date: todayKey(), notes: latest.notes.map(n => ({ ...n, tags: [...n.tags] })) });
+  shown = 0;
+  save();
+  render();
+  toast(`Started today's meeting with ${latest.notes.length} note${latest.notes.length === 1 ? '' : 's'} carried over.`);
+}
+
+// ---------- Email ----------
+function emailText() {
+  const m = meeting();
+  const lines = [`Meeting notes, ${dateLabel(m.date, true)}`, ''];
+  for (const lane of LANES) {
+    const notes = m.notes.filter(n => n.lane === lane.id);
+    lines.push(`${lane.title} (${notes.length})`);
+    if (!notes.length) lines.push('  Nothing');
+    for (const n of notes) {
+      const tags = n.tags.length ? `  [${n.tags.join(', ')}]` : '';
+      lines.push(`  ${n.n}. ${n.text.replace(/\s*\n\s*/g, ' ')}${tags}`);
+    }
+    lines.push('');
+  }
+  return lines.join('\n').trimEnd();
+}
+const emailSubject = () => `Meeting notes, ${dateLabel(meeting().date, true)}`;
+
+function openMailDialog() {
+  $('to').value = data.staff || '';
+  $('preview').textContent = emailText();
+  $('mail').showModal();
+  if (!$('to').value) $('to').focus();
+}
+function rememberStaff() {
+  data.staff = $('to').value.split(/[,;\s]+/).filter(Boolean).join(', ');
+  save();
+}
+$('email').addEventListener('click', openMailDialog);
+$('mail-cancel').addEventListener('click', () => $('mail').close());
+$('mail-copy').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(emailSubject() + '\n\n' + emailText());
+    toast('Notes copied. Paste them into any email.');
+  } catch (e) {
+    toast('Copy was blocked. Select the text in the box and copy it.');
+  }
+});
+$('mail-open').addEventListener('click', () => {
+  rememberStaff();
+  const to = data.staff.split(', ').map(encodeURIComponent).join(',');
+  location.href = `mailto:${to}?subject=${encodeURIComponent(emailSubject())}&body=${encodeURIComponent(emailText())}`;
+  $('mail').close();
+});
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+render();
+
+// Installed app: work offline, and ask the browser not to clear saved notes when space runs low.
+if (location.protocol.startsWith('http') && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
+}
+</script>
+</body>
+</html>
